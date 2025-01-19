@@ -4,7 +4,7 @@ import { parseCV } from "@/lib/pdf/parser";
 export async function GET() {
   try {
     console.log("GET request received");
-    console.log("parseCV type:", typeof parseCV);
+    // console.log("parseCV type:", typeof parseCV);
     
     return NextResponse.json({ status: 'API route is working' });
   } catch (error) {
