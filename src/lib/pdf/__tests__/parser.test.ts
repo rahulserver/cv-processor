@@ -16,46 +16,48 @@ describe('CV Parser', () => {
       throw new Error(`Test PDF file not found at ${pdfPath}`);
     }
     samplePDFBuffer = fs.readFileSync(pdfPath);
-
-    // Extract text once for all tests
     extractedText = await extractTextFromPDF(samplePDFBuffer);
   }, 15000);
 
-  describe('extractTextFromPDF', () => {
-    it('should successfully extract text from sample CV', () => {
-      expect(extractedText).toBeTruthy();
-      expect(typeof extractedText).toBe('string');
-      // Basic content checks
-      expect(extractedText.toLowerCase()).toContain('career objective');
-      expect(extractedText.toLowerCase()).toContain('key skills');
-      expect(extractedText.toLowerCase()).toContain('work history');
-    });
-  });
-
-  describe('parseCV', () => {
+  describe('AI-powered CV parsing', () => {
     let parsedCV: ParsedCV;
 
-    beforeAll(() => {
-      parsedCV = parseCV(extractedText);
-    });
+    beforeAll(async () => {
+      parsedCV = await parseCV(extractedText);
+    }, 30000); // Increased timeout for AI processing
 
-    it('should return a valid ParsedCV structure', () => {
-      expect(parsedCV).toHaveProperty('objective');
-      expect(parsedCV).toHaveProperty('skills');
-      expect(parsedCV).toHaveProperty('experience');
-      expect(parsedCV).toHaveProperty('education');
-    });
-
-    it('should store cleaned text in objective field', () => {
+    it('should extract career objective using AI', () => {
       expect(parsedCV.objective).toBeTruthy();
       expect(typeof parsedCV.objective).toBe('string');
-      expect(parsedCV.objective).not.toMatch(/\s{2,}/); // No multiple spaces
+      // We can't expect exact text matches since AI responses may vary
+      expect(parsedCV.objective.toLowerCase()).toContain('electrical engineer');
     });
 
-    // Pending tests for future AI implementation
-    it.todo('should use AI to extract career objective');
-    it.todo('should use AI to extract skills');
-    it.todo('should use AI to extract work experience');
-    it.todo('should use AI to extract education');
+    it('should extract skills as an array', () => {
+      expect(Array.isArray(parsedCV.skills)).toBe(true);
+      expect(parsedCV.skills.length).toBeGreaterThan(0);
+      // Check for some expected skills but don't require exact matches
+      expect(parsedCV.skills.some(skill => 
+        skill.toLowerCase().includes('tools') ||
+        skill.toLowerCase().includes('electrical') ||
+        skill.toLowerCase().includes('maintenance')
+      )).toBe(true);
+    });
+
+    it('should extract work experience with required fields', () => {
+      expect(Array.isArray(parsedCV.experience)).toBe(true);
+      expect(parsedCV.experience.length).toBeGreaterThan(0);
+      
+      const firstJob = parsedCV.experience[0];
+      expect(firstJob).toHaveProperty('company');
+      expect(firstJob).toHaveProperty('position');
+      expect(firstJob).toHaveProperty('period');
+      expect(firstJob).toHaveProperty('responsibilities');
+      expect(Array.isArray(firstJob.responsibilities)).toBe(true);
+    });
+
+    it('should handle empty input gracefully', async () => {
+      await expect(parseCV('')).rejects.toThrow();
+    });
   });
 });

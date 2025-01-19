@@ -11,6 +11,9 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest',
+  },
 }
 
 export default createJestConfig(config)
