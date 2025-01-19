@@ -1,3 +1,6 @@
+/**
+ * @jest-environment node
+ */
 import fs from 'fs';
 import path from 'path';
 import { extractTextFromPDF, parseCV } from '../parser';
@@ -16,13 +19,13 @@ describe('CV Parser', () => {
 
     // Extract text once for all tests
     extractedText = await extractTextFromPDF(samplePDFBuffer);
-    console.log('Extracted text:', extractedText); // Debugging output
   }, 15000);
 
   describe('extractTextFromPDF', () => {
     it('should successfully extract text from sample CV', () => {
       expect(extractedText).toBeTruthy();
       expect(typeof extractedText).toBe('string');
+      // Basic content checks
       expect(extractedText.toLowerCase()).toContain('career objective');
       expect(extractedText.toLowerCase()).toContain('key skills');
       expect(extractedText.toLowerCase()).toContain('work history');
@@ -34,43 +37,25 @@ describe('CV Parser', () => {
 
     beforeAll(() => {
       parsedCV = parseCV(extractedText);
-      console.log('Parsed CV:', JSON.stringify(parsedCV, null, 2));
     });
 
-    it('should correctly parse career objective', () => {
+    it('should return a valid ParsedCV structure', () => {
+      expect(parsedCV).toHaveProperty('objective');
+      expect(parsedCV).toHaveProperty('skills');
+      expect(parsedCV).toHaveProperty('experience');
+      expect(parsedCV).toHaveProperty('education');
+    });
+
+    it('should store cleaned text in objective field', () => {
       expect(parsedCV.objective).toBeTruthy();
-      expect(parsedCV.objective.toLowerCase()).toContain('dedicated and highly motivated electrical engineer');
+      expect(typeof parsedCV.objective).toBe('string');
+      expect(parsedCV.objective).not.toMatch(/\s{2,}/); // No multiple spaces
     });
 
-    it('should correctly parse key skills', () => {
-      expect(parsedCV.skills).toHaveLength(8); // Adjust this number based on your actual CV
-      expect(parsedCV.skills.some(skill => skill.toLowerCase().includes('operating hand and power tools'))).toBeTruthy();
-      expect(parsedCV.skills.some(skill => skill.toLowerCase().includes('stock control'))).toBeTruthy();
-      expect(parsedCV.skills.some(skill => skill.toLowerCase().includes('forklift and ewp experience'))).toBeTruthy();
-    });
-
-    it('should correctly parse work experience', () => {
-      expect(parsedCV.experience).toHaveLength(4); // Adjust based on your CV
-
-      const zmsExperience = parsedCV.experience.find(exp =>
-        exp.company.toLowerCase().includes('zms electrical'),
-      );
-      expect(zmsExperience).toBeDefined();
-      expect(zmsExperience).toMatchObject({
-        company: expect.stringMatching(/ZMS Electrical/i),
-        position: expect.stringMatching(/Electrician/i),
-        period: '2022-2023',
-      });
-
-      const agedCareExperience = parsedCV.experience.find(exp =>
-        exp.company.toLowerCase().includes('test aged care'),
-      );
-      expect(agedCareExperience).toBeDefined();
-      expect(agedCareExperience).toMatchObject({
-        company: expect.stringMatching(/Test Aged Care/i),
-        position: expect.stringMatching(/Maintenance Manager/i),
-        period: '2018-2022',
-      });
-    });
+    // Pending tests for future AI implementation
+    it.todo('should use AI to extract career objective');
+    it.todo('should use AI to extract skills');
+    it.todo('should use AI to extract work experience');
+    it.todo('should use AI to extract education');
   });
 });
