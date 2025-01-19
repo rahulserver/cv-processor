@@ -10,6 +10,10 @@ const config: Config = {
   testEnvironment: 'jest-environment-jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    'pdfjs-dist/build/pdf.worker.entry': '<rootDir>/node_modules/pdfjs-dist/build/pdf.worker.js'
+  },
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest',
   },
 }
 
