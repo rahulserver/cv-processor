@@ -1,8 +1,8 @@
+export const maxDuration = 60;
 import { NextRequest, NextResponse } from 'next/server';
 import { extractTextFromPDF, parseCV } from '@/lib/pdf/parser';
 import { promises as fs } from 'fs';
 import path from 'path';
-export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   try {
     const filePath = path.resolve(process.cwd(), 'test/data/05-versions-space.pdf');
