@@ -45,3 +45,8 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function GET() {
+    return NextResponse.json({ message: 'GET method works!' });
+}
+  
