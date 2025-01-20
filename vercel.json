@@ -1,0 +1,8 @@
+{
+    "functions": {
+      "api/process-cv": {
+        "includeFiles": "test/data/05-versions-space.pdf"
+      }
+    }
+  }
+  
