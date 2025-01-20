@@ -5,6 +5,17 @@ import path from 'path';
 
 export async function POST(req: NextRequest) {
   try {
+    const filePath = path.resolve(process.cwd(), 'test/data/05-versions-space.pdf');
+
+    // Create the file if it doesn't exist
+    try {
+      await fs.access(filePath);
+    } catch {
+      await fs.mkdir(path.dirname(filePath), { recursive: true }); // Ensure directory exists
+      await fs.writeFile(filePath, ''); // Create an empty file
+    }
+  
+  
     const formData = await req.formData();
     let text: string;
 
