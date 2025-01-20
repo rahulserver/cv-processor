@@ -6,9 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "test": "jest --clearCache && jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "lint": "npx eslint --fix ./src"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.1",

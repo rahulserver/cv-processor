@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
+import { ParsedCV } from '@/lib/pdf/types'
 
 interface UploadCVProps {
-  onProcessed: (data: any) => void
+  onProcessed: (data: ParsedCV) => void
 }
 
 export function UploadCV({ onProcessed }: UploadCVProps) {
