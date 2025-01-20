@@ -1,21 +1,47 @@
-import { NextResponse } from 'next/server';
-import { parseCV } from "@/lib/pdf/parser";
+import { NextRequest, NextResponse } from 'next/server';
+import { extractTextFromPDF, parseCV } from '@/lib/pdf/parser';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-export async function GET() {
+export async function POST(req: NextRequest) {
   try {
-    console.log("GET request received");
-    console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY);
+    const formData = await req.formData();
+    let text: string;
 
-    const { parseCV } = await import("@/lib/pdf/parser");
-    console.log("parseCV dynamically imported successfully:", typeof parseCV);
-    
-    return NextResponse.json({ status: 'API route is working' });
+    // Check if using sample CV
+    const useSample = formData.get('useSample');
+    if (useSample) {
+      // Read sample CV from public directory
+      const samplePath = path.join(process.cwd(), 'public/resources', 'sample-cv.pdf');
+      const buffer = await fs.readFile(samplePath);
+      text = await extractTextFromPDF(buffer);
+    } else {
+      const file = formData.get('cv') as File;
+      if (!file) {
+        return NextResponse.json(
+          { error: 'No file provided' },
+          { status: 400 }
+        );
+      }
+      
+      // Convert uploaded File to Buffer
+      const buffer = Buffer.from(await file.arrayBuffer());
+      text = await extractTextFromPDF(buffer);
+    }
+
+    // Process CV with our AI agent
+    const processedCV = await parseCV(text);
+
+    return NextResponse.json({
+      success: true,
+      data: processedCV
+    });
+
   } catch (error) {
-    console.error("Error in API route:", error);
+    console.error('Error processing CV:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message }, 
+      { error: 'Failed to process CV' },
       { status: 500 }
     );
   }
 }
-
