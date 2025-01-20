@@ -1,6 +1,7 @@
 import PDFParser from 'pdf-parse';
 import { ParsedCV } from './types';
 import { processCVWithAI } from '../agents/cv-processor';
+console.log("Initializing parser.ts");
 
 export async function extractTextFromPDF(pdfBuffer: Buffer): Promise<string> {
   const data = await PDFParser(pdfBuffer, {

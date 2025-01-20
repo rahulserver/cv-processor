@@ -1,5 +1,6 @@
 import { OpenAI } from 'openai';
 import { ParsedCV } from '../pdf/types';
+console.log("Initializing cv-processor.ts");
 
 function getOpenAIClient() {
   return new OpenAI({
