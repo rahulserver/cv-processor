@@ -61,9 +61,9 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
     <AlertDialog open={isOpen}>
       <AlertDialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex justify-between items-center">
+          <AlertDialogTitle className="flex justify-between">
             <span>Processed CV</span>
-            <div className="space-x-2">
+            <div className="flex gap-2">
               <Button variant="outline" onClick={handleDownload}>
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF

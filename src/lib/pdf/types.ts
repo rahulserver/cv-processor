@@ -26,6 +26,13 @@ export interface CVExperience {
     originalNames?: string[];
     piiRemoved?: string[];
     recruiterDetails?: string;
+    sectionTitles?: {
+      summary?: string;
+      skills?: string;
+      experience?: string;
+      education?: string;
+      recruiterDetails?: string;
+    };
   }
   
   export interface CVProcessingError {

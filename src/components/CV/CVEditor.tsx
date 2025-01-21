@@ -106,11 +106,11 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       <h2>${initialCV.firstName || 'First Name'}</h2>
       <hr />
 
-      <h2>Summary</h2>
+      <h2>${initialCV.sectionTitles?.summary || 'Summary'}</h2>
       <p>${initialCV.objective || ''}</p>
       
       ${initialCV.skills && Object.keys(initialCV.skills).length > 0 ? `
-        <h2>Skills</h2>
+        <h2>${initialCV.sectionTitles?.skills || 'Skills'}</h2>
         <ul style="list-style-position: outside; padding-left: 1.5em;">
           ${Object.entries(initialCV.skills).map(([category, skills]) => 
             `<li><strong>${category}</strong>: ${skills}</li>`
@@ -119,7 +119,7 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       ` : ''}
       
       ${initialCV.experience && initialCV.experience.length > 0 ? `
-        <h2>Experience</h2>
+        <h2>${initialCV.sectionTitles?.experience || 'Experience'}</h2>
         ${initialCV.experience.map(exp => `
           <p><strong>${exp.position}</strong></p>
           <p>${exp.company} | ${exp.period}</p>
@@ -132,7 +132,7 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       ` : ''}
       
       ${initialCV.education && initialCV.education.length > 0 ? `
-        <h2>Education</h2>
+        <h2>${initialCV.sectionTitles?.education || 'Education'}</h2>
         ${initialCV.education.map(edu => `
           <p><strong>${edu.qualification}</strong></p>
           <p>${edu.institution} - ${edu.completionDate}</p>
@@ -140,7 +140,7 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       ` : ''}
 
       <hr />
-      <h2>Recruiter Details</h2>
+      <h2>${initialCV.sectionTitles?.recruiterDetails || 'Recruiter Details'}</h2>
       <p>${initialCV.recruiterDetails || ''}</p>
     `
   }
@@ -177,6 +177,23 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
     
     try {
       const content = editor.getHTML();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'text/html');
+      
+      // Extract all section titles
+      const sectionTitles = Array.from(doc.querySelectorAll('h2')).reduce((acc, h2) => {
+        const title = h2.textContent?.trim() || '';
+        if (title === initialCV.firstName) return acc; // Skip the name header
+        
+        // Determine which section this title belongs to
+        if (title.toLowerCase().includes('summary')) acc.summary = title;
+        else if (title.toLowerCase().includes('skill')) acc.skills = title;
+        else if (title.toLowerCase().includes('experience')) acc.experience = title;
+        else if (title.toLowerCase().includes('education')) acc.education = title;
+        else if (title.toLowerCase().includes('recruiter')) acc.recruiterDetails = title;
+        
+        return acc;
+      }, {} as Record<string, string>);
       
       // Parse the HTML content back into CV structure
       const updatedCV: ParsedCV = {
@@ -187,6 +204,7 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
         experience: extractExperience(content) || initialCV.experience || [],
         education: extractEducation(content) || initialCV.education || [],
         recruiterDetails: extractContent(content, 'Recruiter Details') || initialCV.recruiterDetails || '',
+        sectionTitles, // Add the modified section titles
         formattingNotes: initialCV.formattingNotes || [],
         piiRemoved: initialCV.piiRemoved || []
       };
@@ -237,34 +255,46 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
     }
   };
 
-  const extractContent = (html: string, sectionTitle: string): string => {
+  const extractContent = (html: string, defaultTitle: string): string => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      const section = Array.from(doc.querySelectorAll('h2')).find(h2 => 
-        h2.textContent?.trim() === sectionTitle
+      
+      // Get all h2 elements and their content
+      const sections = Array.from(doc.querySelectorAll('h2')).map(h2 => 
+        findSectionContent(doc, h2)
       );
       
-      if (!section) return '';
+      // Find the section that most closely matches the default title
+      // This allows for modified titles to still be matched with their content
+      const section = sections.find(s => 
+        s.title.toLowerCase().includes(defaultTitle.toLowerCase()) ||
+        defaultTitle.toLowerCase().includes(s.title.toLowerCase())
+      );
       
-      let content = '';
-      let currentElement = section.nextElementSibling;
-      
-      while (currentElement && currentElement.tagName !== 'H2' && currentElement.tagName !== 'HR') {
-        if (currentElement.textContent) {
-          const text = currentElement.textContent.trim();
-          if (text) {
-            content += (content ? '\n' : '') + text;
-          }
-        }
-        currentElement = currentElement.nextElementSibling;
-      }
-      
-      return content;
+      return section?.content || '';
     } catch (error) {
-      console.error(`Error extracting ${sectionTitle}:`, error);
+      console.error(`Error extracting ${defaultTitle}:`, error);
       return '';
     }
+  };
+
+  const findSectionContent = (doc: Document, startingH2: Element): { title: string, content: string } => {
+    const title = startingH2.textContent?.trim() || '';
+    let content = '';
+    let currentElement = startingH2.nextElementSibling;
+    
+    while (currentElement && currentElement.tagName !== 'H2' && currentElement.tagName !== 'HR') {
+      if (currentElement.textContent) {
+        const text = currentElement.textContent.trim();
+        if (text) {
+          content += (content ? '\n' : '') + text;
+        }
+      }
+      currentElement = currentElement.nextElementSibling;
+    }
+    
+    return { title, content };
   };
 
   const extractSkills = (html: string): { [key: string]: string } => {
