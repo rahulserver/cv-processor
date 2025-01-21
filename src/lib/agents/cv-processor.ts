@@ -1,8 +1,9 @@
 import { OpenAI } from 'openai';
 
 interface ProcessedCV {
+  firstName: string;
   objective: string;
-  skills: string[];
+  skills: { [category: string]: string };
   experience: {
     company: string;
     position: string;
