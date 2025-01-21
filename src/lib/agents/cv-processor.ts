@@ -17,6 +17,7 @@ interface ProcessedCV {
   }[];
   formattingNotes: string[];
   piiRemoved?: string[];
+  recruiterDetails?: string;
 }
 
 export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
@@ -76,7 +77,13 @@ export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
           3. NEVER add references
           4. NEVER add percentages or specific metrics unless they appear in the source
           5. NEVER embellish or enhance responsibilities with metrics
-          6. ONLY keep first name, remove all other personal information
+          6. Track ALL removed PII in piiRemoved array, including:
+             - Last names
+             - Full names of references
+             - Phone numbers
+             - Email addresses
+             - Physical addresses
+             - Any other identifying information except first name
 
           SKILLS FORMATTING:
           1. Group similar skills under appropriate categories

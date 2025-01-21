@@ -85,44 +85,50 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
             <Card className="w-full max-w-4xl mx-auto">
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <h2>{data.firstName}</h2>
+                  <h2>{data?.firstName || 'Name'}</h2>
                   <hr className="my-2" />
                 </div>
 
                 <div>
                   <h2 className="text-xl font-semibold mb-2">Summary</h2>
-                  <p className="text-gray-700">{data.objective}</p>
+                  <p className="text-gray-700">{data?.objective || ''}</p>
                 </div>
 
-                <div>
-                  <h2 className="text-xl font-semibold mb-2">Skills</h2>
-                  <ul className="list-disc pl-6 space-y-2">
-                    {Object.entries(data.skills).map(([category, skills]) => (
-                      <li key={category}>
-                        <strong>{category}</strong>: {skills}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold mb-2">Experience</h2>
-                  <div className="space-y-4">
-                    {data.experience.map((exp, index) => (
-                      <div key={index}>
-                        <p className="font-semibold">{exp.position}</p>
-                        <p className="text-gray-600">{exp.company} | {exp.period}</p>
-                        <ul className="list-disc pl-6 mt-2">
-                          {exp.responsibilities.map((resp, respIndex) => (
-                            <li key={respIndex}>{resp}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
+                {data?.skills && Object.keys(data.skills).length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold mb-2">Skills</h2>
+                    <ul className="list-disc pl-6 space-y-2">
+                      {Object.entries(data.skills).map(([category, skills]) => (
+                        <li key={category}>
+                          <strong>{category}</strong>: {skills}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
+                )}
 
-                {data.education.length > 0 && (
+                {data?.experience && data.experience.length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold mb-2">Experience</h2>
+                    <div className="space-y-4">
+                      {data.experience.map((exp, index) => (
+                        <div key={index}>
+                          <p className="font-semibold">{exp.position}</p>
+                          <p className="text-gray-600">{exp.company} | {exp.period}</p>
+                          {exp.responsibilities && exp.responsibilities.length > 0 && (
+                            <ul className="list-disc pl-6 mt-2">
+                              {exp.responsibilities.map((resp, respIndex) => (
+                                <li key={respIndex}>{resp}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {data?.education && data.education.length > 0 && (
                   <div>
                     <h2 className="text-xl font-semibold mb-2">Education</h2>
                     <div className="space-y-2">
@@ -136,27 +142,27 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
                   </div>
                 )}
 
-                {data.recruiterDetails && (
+                {data?.recruiterDetails && (
                   <div>
                     <h2 className="text-xl font-semibold mb-2">Recruiter Details</h2>
-                    <p className="text-gray-700">{data.recruiterDetails}</p>
+                    <p className="text-gray-700 whitespace-pre-wrap">{data.recruiterDetails}</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Formatting Notes */}
-            {data.formattingNotes.length > 0 && (
+            {(data?.formattingNotes || []).length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Formatting Notes</CardTitle>
                 </CardHeader>
-              <CardContent>
-                <ul className="list-disc list-inside space-y-1">
-                  {data.formattingNotes.map((note, index) => (
-                    <li key={index} className="text-sm text-muted-foreground">{note}</li>
-                  ))}
-                </ul>
+                <CardContent>
+                  <ul className="list-disc list-inside space-y-1">
+                    {data.formattingNotes.map((note, index) => (
+                      <li key={index} className="text-sm text-muted-foreground">{note}</li>
+                    ))}
+                  </ul>
                 </CardContent>
               </Card>
             )}

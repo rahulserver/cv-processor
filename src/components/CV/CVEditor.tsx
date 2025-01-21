@@ -18,6 +18,7 @@ import {
   Heading2
 } from 'lucide-react'
 import { ParsedCV } from '@/lib/pdf/types'
+import { toast } from "sonner"
 
 interface CVEditorProps {
   initialCV: ParsedCV;
@@ -106,29 +107,37 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       <hr />
 
       <h2>Summary</h2>
-      <p>${initialCV.objective}</p>
+      <p>${initialCV.objective || ''}</p>
       
-      <h2>Skills</h2>
-      <ul style="list-style-position: outside; padding-left: 1.5em;">
-        ${Object.entries(initialCV.skills).map(([category, skills]) => 
-          `<li><strong>${category}</strong>: ${skills}</li>`
-        ).join('')}
-      </ul>
-      
-      <h2>Experience</h2>
-      ${initialCV.experience.map(exp => `
-        <p><strong>${exp.position}</strong></p>
-        <p>${exp.company} | ${exp.period}</p>
+      ${initialCV.skills && Object.keys(initialCV.skills).length > 0 ? `
+        <h2>Skills</h2>
         <ul style="list-style-position: outside; padding-left: 1.5em;">
-          ${exp.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+          ${Object.entries(initialCV.skills).map(([category, skills]) => 
+            `<li><strong>${category}</strong>: ${skills}</li>`
+          ).join('')}
         </ul>
-      `).join('')}
+      ` : ''}
       
-      <h2>Education</h2>
-      ${initialCV.education.map(edu => `
-        <p><strong>${edu.qualification}</strong></p>
-        <p>${edu.institution} - ${edu.completionDate}</p>
-      `).join('')}
+      ${initialCV.experience && initialCV.experience.length > 0 ? `
+        <h2>Experience</h2>
+        ${initialCV.experience.map(exp => `
+          <p><strong>${exp.position}</strong></p>
+          <p>${exp.company} | ${exp.period}</p>
+          ${exp.responsibilities && exp.responsibilities.length > 0 ? `
+            <ul style="list-style-position: outside; padding-left: 1.5em;">
+              ${exp.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+            </ul>
+          ` : ''}
+        `).join('')}
+      ` : ''}
+      
+      ${initialCV.education && initialCV.education.length > 0 ? `
+        <h2>Education</h2>
+        ${initialCV.education.map(edu => `
+          <p><strong>${edu.qualification}</strong></p>
+          <p>${edu.institution} - ${edu.completionDate}</p>
+        `).join('')}
+      ` : ''}
 
       <hr />
       <h2>Recruiter Details</h2>
@@ -161,41 +170,82 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
   });
   
   const handleSave = () => {
-    if (!editor) return;
+    if (!editor) {
+      toast.error('Editor not initialized');
+      return;
+    }
     
-    const content = editor.getHTML();
-    
-    // Parse the HTML content back into CV structure
-    const updatedCV: ParsedCV = {
-      ...initialCV,
-      objective: extractContent(content, 'Summary'),
-      skills: extractSkills(content),
-      experience: extractExperience(content),
-      education: extractEducation(content),
-      recruiterDetails: extractContent(content, 'Recruiter Details')
-    };
-    
-    onSave(updatedCV);
+    try {
+      const content = editor.getHTML();
+      
+      // Parse the HTML content back into CV structure
+      const updatedCV: ParsedCV = {
+        ...initialCV,
+        firstName: extractFirstName(content),
+        objective: extractContent(content, 'Summary'),
+        skills: extractSkills(content),
+        experience: extractExperience(content),
+        education: extractEducation(content),
+        recruiterDetails: extractContent(content, 'Recruiter Details')
+      };
+
+      // Validate required fields
+      if (!updatedCV.firstName?.trim()) {
+        toast.error('Name is required');
+        return;
+      }
+
+      // Validate experience entries
+      if (updatedCV.experience) {
+        for (const exp of updatedCV.experience) {
+          if (!exp.company?.trim() || !exp.position?.trim() || !exp.period?.trim()) {
+            toast.error('All experience entries must have company, position, and period');
+            return;
+          }
+        }
+      }
+
+      onSave(updatedCV);
+      toast.success('CV updated successfully');
+    } catch (error) {
+      console.error('Error saving CV:', error);
+      toast.error('Failed to save CV changes');
+    }
   }
 
-  const extractContent = (html: string, sectionTitle: string): string => {
+  const extractFirstName = (html: string): string => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const section = Array.from(doc.querySelectorAll('h2')).find(h2 => 
-      h2.textContent?.trim() === sectionTitle
-    );
-    if (!section || !section.nextElementSibling) return '';
-    
-    // Get content until the next h2 or end of document
-    let content = '';
-    let currentElement = section.nextElementSibling;
-    while (currentElement && currentElement.tagName !== 'H2') {
-      content += currentElement.textContent?.trim() || '';
-      const nextElement = currentElement.nextElementSibling;
-      if (!nextElement) break;
-      currentElement = nextElement;
+    const firstH2 = doc.querySelector('h2');
+    return firstH2?.textContent?.trim() || initialCV.firstName || '';
+  };
+
+  const extractContent = (html: string, sectionTitle: string): string => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const section = Array.from(doc.querySelectorAll('h2')).find(h2 => 
+        h2.textContent?.trim() === sectionTitle
+      );
+      if (!section || !section.nextElementSibling) return '';
+      
+      let content = '';
+      let currentElement = section.nextElementSibling;
+      
+      // Keep collecting content until we hit the next h2 or run out of elements
+      while (currentElement && currentElement.tagName !== 'H2') {
+        if (currentElement.textContent) {
+          // Add a newline between paragraphs
+          content += (content ? '\n' : '') + currentElement.textContent.trim();
+        }
+        currentElement = currentElement.nextElementSibling;
+      }
+      
+      return content;
+    } catch (error) {
+      console.error(`Error extracting ${sectionTitle}:`, error);
+      return '';
     }
-    return content;
   }
 
   const extractSkills = (html: string): { [key: string]: string } => {
