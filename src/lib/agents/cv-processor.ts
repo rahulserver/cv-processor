@@ -21,9 +21,15 @@ interface ProcessedCV {
 }
 
 export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
-    console.log('cvText',cvText);
-  const startTime = Date.now();
+  console.log('cvText', cvText);
+
+  // Add input validation at the start
+  if (!cvText || !cvText.trim()) {
+    throw new Error('Text is required');
+  }
+
   console.log('Starting CV processing...');
+  const startTime = Date.now();
   
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
