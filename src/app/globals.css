@@ -70,3 +70,28 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Add Prose styles for the editor */
+.prose {
+  @apply max-w-none;
+}
+
+.prose h1 {
+  @apply text-2xl font-bold mb-4 mt-6;
+}
+
+.prose h2 {
+  @apply text-xl font-semibold mb-3 mt-4;
+}
+
+.prose p {
+  @apply mb-4;
+}
+
+.prose ul {
+  @apply list-disc list-inside mb-4;
+}
+
+.prose li {
+  @apply mb-1;
+}

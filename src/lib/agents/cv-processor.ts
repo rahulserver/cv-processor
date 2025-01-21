@@ -1,102 +1,189 @@
 import { OpenAI } from 'openai';
-import { ParsedCV } from '../pdf/types';
-console.log("Initializing cv-processor.ts");
 
-function getOpenAIClient() {
-  return new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-}
-
-interface AnonymizedCV extends ParsedCV {
-  originalNames?: string[];
+interface ProcessedCV {
+  objective: string;
+  skills: string[];
+  experience: {
+    company: string;
+    position: string;
+    period: string;
+    responsibilities: string[];
+  }[];
+  education: {
+    institution: string;
+    qualification: string;
+    completionDate: string;
+  }[];
+  formattingNotes: string[];
   piiRemoved?: string[];
 }
 
-export async function processCVWithAI(cvText: string): Promise<AnonymizedCV> {
-  const openai = getOpenAIClient();
+export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
+    console.log('cvText',cvText);
+  const startTime = Date.now();
+  console.log('Starting CV processing...');
+  
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   try {
-    // Step 1: Initial parsing and PII detection
-    const piiAnalysis = await openai.chat.completions.create({
+    // Initial analysis to determine strategy
+    console.log('Starting strategy analysis...');
+    const strategyStartTime = Date.now();
+    const strategy = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `You are an expert CV analyzer focusing on privacy and formatting. 
-          Your task is to identify and handle personally identifiable information (PII) while maintaining essential professional content.`
+          content: `You are an intelligent CV analyzer. Evaluate the CV and determine the optimal processing strategy.
+          Return a JSON object describing what aspects need focus and in what order.`
         },
         {
           role: "user",
-          content: `Analyze this CV for PII and return a JSON object containing:
-          1. List of identified PII elements
-          2. The same text with PII anonymized (keep first names only)
-          3. List of original names found (for reference)
-          
-          Format the response as:
+          content: `Analyze this CV and return a JSON object containing:
           {
-            "piiFound": ["list", "of", "PII", "elements"],
-            "anonymizedText": "CV text with PII removed",
-            "originalNames": ["list", "of", "original", "names"]
+            "contentQuality": "high|medium|low",
+            "primaryFocus": ["List of areas needing most attention"],
+            "processingPriorities": ["Ordered list of processing steps needed"],
+            "potentialChallenges": ["Anticipated processing challenges"]
           }
-          
+
           CV Content:
           ${cvText}`
         }
       ],
       response_format: { type: "json_object" }
     });
+    console.log(`Strategy analysis completed in ${(Date.now() - strategyStartTime)/1000}s`);
 
-    const piiResult = JSON.parse(piiAnalysis.choices[0].message.content || '{}');
+    const strategyResult = JSON.parse(strategy.choices[0].message.content || '{}');
 
-    // Step 2: Structure the anonymized CV
-    const structureCompletion = await openai.chat.completions.create({
+    // Main processing with strategy-informed approach
+    console.log('Starting main processing...');
+    const processingStartTime = Date.now();
+    const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `You are a CV formatting expert. 
-          Parse and structure the anonymized CV into a professional format following these guidelines:
-          1. Maintain clear section headings (in title case)
-          2. Use bullet points for skills and experiences
-          3. Ensure consistent date formatting
-          4. Keep formatting clean and professional
-          5. Remove any remaining personal identifiers except first names`
+          content: `You are an intelligent CV processing agent. Your primary task is to ONLY process and format existing information, never invent new details.
+
+          STRICT RULES:
+          1. NEVER add education unless explicitly stated in the CV
+          2. NEVER create certifications unless explicitly listed
+          3. NEVER add references
+          4. NEVER add percentages or specific metrics unless they appear in the source
+          5. NEVER embellish or enhance responsibilities with metrics
+          6. ONLY keep first name, remove all other personal information
+
+          SKILLS FORMATTING:
+          1. Group similar skills under appropriate categories
+          2. Return skills as an object where:
+             - Keys are category names (derived from the skills present)
+             - Values are comma-separated strings of related skills
+          3. DO NOT create categories that don't match the skills present
+          4. DO NOT invent or add skills not present in the source
+
+          Example skills format (DO NOT USE THESE EXACT CATEGORIES, CREATE RELEVANT ONES FROM THE CV):
+          {
+            "Category Name": "skill1, skill2, skill3",
+            "Another Category": "skill4, skill5, skill6"
+          }
+
+          Return the processed CV in this exact format:
+          {
+            "firstName": "string",
+            "objective": "string",
+            "skills": {
+              "category1": "comma separated skills",
+              "category2": "comma separated skills"
+            },
+            "experience": [{
+              "company": "string",
+              "position": "string",
+              "period": "string",
+              "responsibilities": ["string"]
+            }],
+            "education": [{
+              "institution": "string",
+              "qualification": "string",
+              "completionDate": "string"
+            }],
+            "formattingNotes": ["string"],
+            "piiRemoved": ["string"]
+          }`
         },
         {
           role: "user",
-          content: `Parse this anonymized CV and return a JSON object with the following structure:
-          {
-            "objective": "A clear, professional summary",
-            "skills": ["Array of key skills"],
-            "experience": [{
-              "company": "Company name",
-              "position": "Job title",
-              "period": "Date period",
-              "responsibilities": ["Array of key responsibilities"]
-            }],
-            "education": ["Array of education entries"],
-            "formattingNotes": ["Any special formatting instructions"]
-          }
+          content: `Process this CV and return a JSON object following the specified format:
 
-          Anonymized CV:
-          ${piiResult.anonymizedText}`
+          CV Content:
+          ${cvText}`
         }
       ],
       response_format: { type: "json_object" }
     });
+    console.log(`Main processing completed in ${(Date.now() - processingStartTime)/1000}s`);
 
-    const structuredResult = JSON.parse(structureCompletion.choices[0].message.content || '{}');
+    const result = JSON.parse(completion.choices[0].message.content || '{}');
 
-    // Combine results
-    return {
-      ...structuredResult,
-      originalNames: piiResult.originalNames,
-      piiRemoved: piiResult.piiFound
-    };
+    // Enhancement if needed
+    if (strategyResult.contentQuality !== 'high' || strategyResult.potentialChallenges.length > 0) {
+      console.log('Starting enhancement...');
+      const enhancementStartTime = Date.now();
+      const enhancement = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a CV enhancement specialist. Your task is to improve the organization and presentation of the CV while maintaining factual accuracy.
+
+            STRICT RULES:
+            1. NEVER add information that isn't in the source CV
+            2. NEVER create metrics or percentages that aren't in the source
+            3. NEVER fabricate any details
+            
+            SKILLS ORGANIZATION:
+            1. Analyze the skills list and identify 4-6 natural groupings based on the actual skills present
+            2. Create appropriate category names based on the skills' nature
+            3. Group related skills together under each category
+            4. Format each category as "Category: skill1, skill2, etc."
+            
+            Example format (DO NOT USE THESE EXACT CATEGORIES, CREATE RELEVANT ONES BASED ON THE CV):
+            "Core Technical Skills: skill1, skill2, skill3"
+            "Tools & Systems: skill1, skill2"
+            "Process & Methods: skill1, skill2"
+            
+            The categories should emerge from the skills present in the CV, not from a predefined list.`
+          },
+          {
+            role: "user",
+            content: `Enhance this CV by organizing the skills into natural groupings while maintaining all other sections as they are.
+            
+            Current CV:
+            ${JSON.stringify(result)}
+            
+            Return an improved version in the same JSON format, with skills grouped but not fabricated.`
+          }
+        ],
+        response_format: { type: "json_object" }
+      });
+      console.log(`Enhancement completed in ${(Date.now() - enhancementStartTime)/1000}s`);
+
+      const enhancedResult = JSON.parse(enhancement.choices[0].message.content || '{}');
+      console.log(`Total processing time: ${(Date.now() - startTime)/1000}s`);
+      console.log('enhancedResult',JSON.stringify(enhancedResult));
+      return enhancedResult;
+    }
+
+    console.log(`Total processing time: ${(Date.now() - startTime)/1000}s`);
+    console.log('result',JSON.stringify(result));
+    return result;
 
   } catch (error) {
-    console.error('Error processing CV with AI:', error);
-    throw new Error('Failed to process CV with AI');
+    console.error('Error processing CV:', error);
+    console.log(`Failed after ${(Date.now() - startTime)/1000}s`);
+    throw new Error('Failed to process CV');
   }
 }

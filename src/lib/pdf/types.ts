@@ -6,18 +6,26 @@ export interface CVExperience {
   }
   
   export interface ParsedCV {
+    firstName: string;
     objective: string;
-    skills: string[];
-    experience: Array<{
+    skills: {
+      [category: string]: string;
+    };
+    experience: {
       company: string;
       position: string;
       period: string;
       responsibilities: string[];
-    }>;
-    education: string[];
-    formattingNotes?: string[];
+    }[];
+    education: {
+      institution: string;
+      qualification: string;
+      completionDate: string;
+    }[];
+    formattingNotes: string[];
     originalNames?: string[];
     piiRemoved?: string[];
+    recruiterDetails?: string;
   }
   
   export interface CVProcessingError {
