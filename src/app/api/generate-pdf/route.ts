@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     const data: ParsedCV = await req.json();
     
     // Launch Puppeteer
-    const browser = await puppeteer.launch({ headless: 'new' });
+    const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     
     // Generate HTML content
