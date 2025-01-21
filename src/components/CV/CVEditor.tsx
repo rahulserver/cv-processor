@@ -227,15 +227,14 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       const section = Array.from(doc.querySelectorAll('h2')).find(h2 => 
         h2.textContent?.trim() === sectionTitle
       );
-      if (!section || !section.nextElementSibling) return '';
+      const nextElement = section?.nextElementSibling;
+      if (!section || !nextElement) return '';
       
       let content = '';
-      let currentElement = section.nextElementSibling;
+      let currentElement: Element | null = nextElement;
       
-      // Keep collecting content until we hit the next h2 or run out of elements
       while (currentElement && currentElement.tagName !== 'H2') {
         if (currentElement.textContent) {
-          // Add a newline between paragraphs
           content += (content ? '\n' : '') + currentElement.textContent.trim();
         }
         currentElement = currentElement.nextElementSibling;
