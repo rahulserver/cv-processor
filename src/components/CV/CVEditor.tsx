@@ -181,12 +181,14 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       // Parse the HTML content back into CV structure
       const updatedCV: ParsedCV = {
         ...initialCV,
-        firstName: extractFirstName(content),
-        objective: extractContent(content, 'Summary'),
-        skills: extractSkills(content),
-        experience: extractExperience(content),
-        education: extractEducation(content),
-        recruiterDetails: extractContent(content, 'Recruiter Details')
+        firstName: extractFirstName(content) || initialCV.firstName || '',
+        objective: extractContent(content, 'Summary') || initialCV.objective || '',
+        skills: extractSkills(content) || initialCV.skills || {},
+        experience: extractExperience(content) || initialCV.experience || [],
+        education: extractEducation(content) || initialCV.education || [],
+        recruiterDetails: extractContent(content, 'Recruiter Details') || initialCV.recruiterDetails || '',
+        formattingNotes: initialCV.formattingNotes || [],
+        piiRemoved: initialCV.piiRemoved || []
       };
 
       // Validate required fields
@@ -195,8 +197,8 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
         return;
       }
 
-      // Validate experience entries
-      if (updatedCV.experience) {
+      // Validate experience entries if they exist
+      if (updatedCV.experience.length > 0) {
         for (const exp of updatedCV.experience) {
           if (!exp.company?.trim() || !exp.position?.trim() || !exp.period?.trim()) {
             toast.error('All experience entries must have company, position, and period');
@@ -204,6 +206,16 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
           }
         }
       }
+
+      // Log the extracted content for debugging
+      console.log('Extracted CV:', {
+        firstName: updatedCV.firstName,
+        objective: updatedCV.objective,
+        skills: updatedCV.skills,
+        experience: updatedCV.experience,
+        education: updatedCV.education,
+        recruiterDetails: updatedCV.recruiterDetails
+      });
 
       onSave(updatedCV);
       toast.success('CV updated successfully');
@@ -214,10 +226,15 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
   }
 
   const extractFirstName = (html: string): string => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const firstH2 = doc.querySelector('h2');
-    return firstH2?.textContent?.trim() || initialCV.firstName || '';
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const firstH2 = doc.querySelector('h2');
+      return firstH2?.textContent?.trim() || '';
+    } catch (error) {
+      console.error('Error extracting name:', error);
+      return '';
+    }
   };
 
   const extractContent = (html: string, sectionTitle: string): string => {
@@ -227,15 +244,18 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       const section = Array.from(doc.querySelectorAll('h2')).find(h2 => 
         h2.textContent?.trim() === sectionTitle
       );
-      const nextElement = section?.nextElementSibling;
-      if (!section || !nextElement) return '';
+      
+      if (!section) return '';
       
       let content = '';
-      let currentElement: Element | null = nextElement;
+      let currentElement = section.nextElementSibling;
       
-      while (currentElement && currentElement.tagName !== 'H2') {
+      while (currentElement && currentElement.tagName !== 'H2' && currentElement.tagName !== 'HR') {
         if (currentElement.textContent) {
-          content += (content ? '\n' : '') + currentElement.textContent.trim();
+          const text = currentElement.textContent.trim();
+          if (text) {
+            content += (content ? '\n' : '') + text;
+          }
         }
         currentElement = currentElement.nextElementSibling;
       }
@@ -245,33 +265,38 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       console.error(`Error extracting ${sectionTitle}:`, error);
       return '';
     }
-  }
+  };
 
   const extractSkills = (html: string): { [key: string]: string } => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const skillsSection = Array.from(doc.querySelectorAll('h2')).find(h2 => 
-      h2.textContent?.trim() === 'Skills'
-    );
-    if (!skillsSection) return {};
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const skillsSection = Array.from(doc.querySelectorAll('h2')).find(h2 => 
+        h2.textContent?.trim() === 'Skills'
+      );
+      if (!skillsSection) return {};
 
-    const skillsList = skillsSection.nextElementSibling;
-    if (!skillsList || skillsList.tagName !== 'UL') return {};
+      const skillsList = skillsSection.nextElementSibling;
+      if (!skillsList || skillsList.tagName !== 'UL') return {};
 
-    const skills: { [key: string]: string } = {};
-    Array.from(skillsList.querySelectorAll('li')).forEach(li => {
-      const strongTag = li.querySelector('strong');
-      if (strongTag) {
-        const category = strongTag.textContent?.replace(':', '').trim() || '';
-        const skillsText = li.textContent?.replace(strongTag.textContent || '', '').replace(':', '').trim() || '';
-        if (category && skillsText) {
-          skills[category] = skillsText;
+      const skills: { [key: string]: string } = {};
+      Array.from(skillsList.querySelectorAll('li')).forEach(li => {
+        const strongTag = li.querySelector('strong');
+        if (strongTag) {
+          const category = strongTag.textContent?.replace(':', '').trim() || '';
+          const skillsText = li.textContent?.replace(strongTag.textContent || '', '').replace(':', '').trim() || '';
+          if (category && skillsText) {
+            skills[category] = skillsText;
+          }
         }
-      }
-    });
+      });
 
-    return skills;
-  }
+      return skills;
+    } catch (error) {
+      console.error('Error extracting skills:', error);
+      return {};
+    }
+  };
 
   const extractExperience = (html: string): ParsedCV['experience'] => {
     const parser = new DOMParser();
