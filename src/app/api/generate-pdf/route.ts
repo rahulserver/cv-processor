@@ -1,35 +1,194 @@
-import { NextRequest, NextResponse } from 'next/server';
-import chromium from '@sparticuz/chromium';
-import puppeteer from 'puppeteer-core';
+import { NextRequest } from 'next/server';
 import { ParsedCV } from '@/lib/pdf/types';
+import { createElement } from 'react';
+import {
+  pdf,
+  Document,
+  Page,
+  Text,
+  View,
+  StyleSheet,
+} from '@react-pdf/renderer';
+
+export const runtime = 'nodejs';
+
+const styles = StyleSheet.create({
+  page: {
+    fontFamily: 'Helvetica',
+    lineHeight: 1.6,
+    color: '#333',
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+    borderBottom: '2px solid #333',
+    paddingBottom: 5,
+  },
+  heading: {
+    fontSize: 18,
+    color: '#444',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  text: {
+    fontSize: 12,
+    marginVertical: 8,
+  },
+  experienceItem: {
+    marginBottom: 15,
+  },
+  educationItem: {
+    marginBottom: 12,
+  },
+  list: {
+    paddingLeft: 20,
+    marginVertical: 10,
+  },
+  listItem: {
+    fontSize: 12,
+    marginBottom: 5,
+  },
+  strong: {
+    fontFamily: 'Helvetica-Bold',
+  },
+  recruiterDetails: {
+    marginTop: 30,
+    paddingTop: 20,
+    borderTop: '1px solid #ddd',
+    whiteSpace: 'pre-wrap',
+  },
+});
 
 export async function POST(req: NextRequest) {
   try {
     const data: ParsedCV = await req.json();
 
-    // Launch Puppeteer with chromium
-    const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless: true,
-    });
-    const page = await browser.newPage();
+    const MyDocument = createElement(
+      Document,
+      {},
+      createElement(
+        Page,
+        { style: styles.page },
+        // Name (h1)
+        createElement(Text, { style: styles.title }, data.firstName),
 
-    // Generate HTML content
-    const html = generateHTML(data);
-    await page.setContent(html);
+        // Summary (h2 + p)
+        createElement(Text, { style: styles.heading }, 'Summary'),
+        createElement(Text, { style: styles.text }, data.objective),
 
-    // Generate PDF
-    const pdf = await page.pdf({
-      format: 'A4',
-      margin: { top: '1cm', right: '1cm', bottom: '1cm', left: '1cm' },
-      printBackground: true,
-    });
+        // Skills
+        data.skills &&
+          Object.keys(data.skills).length > 0 &&
+          createElement(
+            View,
+            null,
+            createElement(Text, { style: styles.heading }, 'Skills'),
+            createElement(
+              View,
+              { style: styles.list },
+              ...Object.entries(data.skills).map(([category, skills]) =>
+                createElement(
+                  Text,
+                  { style: styles.listItem },
+                  createElement(
+                    Text,
+                    { style: styles.strong },
+                    `${category}: `,
+                  ),
+                  skills,
+                ),
+              ),
+            ),
+          ),
 
-    await browser.close();
+        // Experience
+        data.experience &&
+          data.experience.length > 0 &&
+          createElement(
+            View,
+            null,
+            createElement(Text, { style: styles.heading }, 'Experience'),
+            ...data.experience.map((exp) =>
+              createElement(
+                View,
+                { style: styles.experienceItem },
+                createElement(
+                  Text,
+                  { style: styles.text },
+                  createElement(
+                    Text,
+                    { style: styles.strong },
+                    `${exp.position}`,
+                  ),
+                ),
+                createElement(
+                  Text,
+                  { style: styles.text },
+                  `${exp.company} | ${exp.period}`,
+                ),
+                exp.responsibilities &&
+                  createElement(
+                    View,
+                    { style: styles.list },
+                    ...exp.responsibilities.map((resp) =>
+                      createElement(
+                        Text,
+                        { style: styles.listItem },
+                        `• ${resp}`,
+                      ),
+                    ),
+                  ),
+              ),
+            ),
+          ),
 
-    return new NextResponse(pdf, {
+        // Education
+        data.education &&
+          data.education.length > 0 &&
+          createElement(
+            View,
+            null,
+            createElement(Text, { style: styles.heading }, 'Education'),
+            ...data.education.map((edu) =>
+              createElement(
+                View,
+                { style: styles.educationItem },
+                createElement(
+                  Text,
+                  { style: styles.text },
+                  createElement(
+                    Text,
+                    { style: styles.strong },
+                    `${edu.qualification}`,
+                  ),
+                ),
+                createElement(
+                  Text,
+                  { style: styles.text },
+                  `${edu.institution} - ${edu.completionDate}`,
+                ),
+              ),
+            ),
+          ),
+
+        // Recruiter Details
+        data.recruiterDetails &&
+          createElement(
+            View,
+            { style: styles.recruiterDetails },
+            createElement(Text, { style: styles.heading }, 'Recruiter Details'),
+            createElement(Text, { style: styles.text }, data.recruiterDetails),
+          ),
+      ),
+    );
+
+    const pdfDoc = await pdf(MyDocument);
+    const pdfBytes = await pdfDoc.toBlob();
+
+    return new Response(pdfBytes, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename=${
@@ -38,8 +197,13 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to generate PDF' },
+    console.error('Error generating PDF:', error);
+    return Response.json(
+      {
+        error: `Failed to generate PDF: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      },
       { status: 500 },
     );
   }
@@ -95,13 +259,7 @@ function generateHTML(cv: ParsedCV): string {
             margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
-          }
-          .recruiter-details h2 {
-            margin-bottom: 8px;
-          }
-          .recruiter-details p {
             white-space: pre-wrap;
-            margin-top: 0;
           }
         </style>
       </head>

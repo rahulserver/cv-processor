@@ -3,8 +3,8 @@
       "app/api/process-cv": {
         "includeFiles": "test/data/05-versions-space.pdf"
       },
-      "app/api/generate-pdf": {
-        "memory": 1024,
+      "src/app/api/generate-pdf/route.ts": {
+        "memory": 3008,
         "maxDuration": 60
       }  
     }
