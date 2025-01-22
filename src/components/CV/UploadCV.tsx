@@ -70,7 +70,7 @@ export function UploadCV({ onProcessed }: UploadCVProps) {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVICE_URL}/api/cv/process`,
+        `${process.env.NEXT_PUBLIC_SERVICE_URL}/apis/cv/process`,
         {
           method: 'POST',
           body: formData,

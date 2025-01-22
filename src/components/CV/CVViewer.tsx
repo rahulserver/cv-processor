@@ -31,7 +31,7 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
   const handleDownload = async () => {
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVICE_URL}/api/pdf/generate`,
+        `${process.env.NEXT_PUBLIC_SERVICE_URL}/apis/pdf/generate`,
         {
           method: 'POST',
           headers: {
