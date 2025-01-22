@@ -2,7 +2,11 @@
     "functions": {
       "app/api/process-cv": {
         "includeFiles": "test/data/05-versions-space.pdf"
-      }
+      },
+      "api/generate-pdf/route.ts": {
+        "memory": 1024,
+        "maxDuration": 60
+      }  
     }
   }
   
