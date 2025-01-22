@@ -495,10 +495,7 @@ export function CVEditor({ initialCV, onSave, onCancel }: CVEditorProps) {
             <EditorContent editor={editor} />
           </div>
         </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
+        <div className="mt-4 flex justify-end">
           <Button onClick={handleSave}>Save Changes</Button>
         </div>
       </CardContent>

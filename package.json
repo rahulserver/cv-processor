@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && mkdir -p .next/server/test/data && cp -R test/data/. .next/server/test/data",
+    "build": "next build",
     "start": "next start",
     "test": "jest --clearCache && jest",
     "test:watch": "jest --watch",

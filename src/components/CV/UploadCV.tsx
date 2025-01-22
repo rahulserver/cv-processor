@@ -69,10 +69,13 @@ export function UploadCV({ onProcessed }: UploadCVProps) {
         formData.append('cv', file!);
       }
 
-      const response = await fetch('http://localhost:3001/api/cv/process', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVICE_URL}/api/cv/process`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+      );
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Failed to get reader');

@@ -30,13 +30,16 @@ interface CVViewerProps {
 export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
   const handleDownload = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/pdf/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVICE_URL}/api/pdf/generate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
         },
-        body: JSON.stringify(data),
-      });
+      );
 
       if (!response.ok) throw new Error('Failed to generate PDF');
 
