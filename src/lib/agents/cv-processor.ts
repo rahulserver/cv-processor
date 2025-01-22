@@ -17,38 +17,52 @@ interface ProcessedCV {
   }[];
   formattingNotes: string[];
   piiRemoved?: string[];
-  recruiterDetails?: string;
+}
+interface ProgressCallback {
+  (message: string, percentage: number): void;
 }
 
-export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
-  console.log('cvText', cvText);
+export async function processCVWithAI(
+  cvText: string,
+  onProgress?: ProgressCallback,
+): Promise<ProcessedCV> {
+  const updateProgress = (message: string, percentage: number) => {
+    console.log(`Progress: ${percentage}% - ${message}`);
+    onProgress?.(message, percentage);
+  };
 
-  // Add input validation at the start
   if (!cvText || !cvText.trim()) {
     throw new Error('Text is required');
   }
 
-  console.log('Starting CV processing...');
+  updateProgress('Initializing AI CV Analysis Agent...', 5);
   const startTime = Date.now();
-  
+
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
   try {
-    // Initial analysis to determine strategy
-    console.log('Starting strategy analysis...');
+    // Strategy Analysis Phase
+    updateProgress(
+      'AI Strategy Agent: Analyzing CV structure and determining optimal processing approach...',
+      15,
+    );
+    updateProgress(
+      'AI Strategy Agent: Evaluating content quality and identifying key areas for focus...',
+      20,
+    );
     const strategyStartTime = Date.now();
     const strategy = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-mini',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are an intelligent CV analyzer. Evaluate the CV and determine the optimal processing strategy.
-          Return a JSON object describing what aspects need focus and in what order.`
+          Return a JSON object describing what aspects need focus and in what order.`,
         },
         {
-          role: "user",
+          role: 'user',
           content: `Analyze this CV and return a JSON object containing:
           {
             "contentQuality": "high|medium|low",
@@ -58,23 +72,56 @@ export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
           }
 
           CV Content:
-          ${cvText}`
-        }
+          ${cvText}`,
+        },
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: 'json_object' },
     });
-    console.log(`Strategy analysis completed in ${(Date.now() - strategyStartTime)/1000}s`);
+    console.log(
+      `Strategy analysis completed in ${
+        (Date.now() - strategyStartTime) / 1000
+      }s`,
+    );
 
-    const strategyResult = JSON.parse(strategy.choices[0].message.content || '{}');
+    const strategyResult = JSON.parse(
+      strategy.choices[0].message.content || '{}',
+    );
+    updateProgress(
+      `AI Strategy Agent: Analysis complete - Detected ${strategyResult.contentQuality} quality content`,
+      25,
+    );
+    updateProgress(
+      `AI Strategy Agent: Identified key focus areas: ${strategyResult.primaryFocus.join(
+        ', ',
+      )}`,
+      30,
+    );
+    updateProgress(
+      `AI Strategy Agent: Processing priorities set: ${strategyResult.processingPriorities.join(
+        ' → ',
+      )}`,
+      35,
+    );
 
-    // Main processing with strategy-informed approach
-    console.log('Starting main processing...');
+    // Main Processing Phase
+    updateProgress(
+      'AI Processing Agent: Beginning structured information extraction...',
+      40,
+    );
+    updateProgress(
+      'AI Processing Agent: Identifying and categorizing skills...',
+      45,
+    );
+    updateProgress(
+      'AI Processing Agent: Analyzing work experience and responsibilities...',
+      50,
+    );
     const processingStartTime = Date.now();
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-mini',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are an intelligent CV processing agent. Your primary task is to ONLY process and format existing information, never invent new details.
 
           STRICT RULES:
@@ -126,31 +173,56 @@ export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
             }],
             "formattingNotes": ["string"],
             "piiRemoved": ["string"]
-          }`
+          }`,
         },
         {
-          role: "user",
+          role: 'user',
           content: `Process this CV and return a JSON object following the specified format:
 
           CV Content:
-          ${cvText}`
-        }
+          ${cvText}`,
+        },
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: 'json_object' },
     });
-    console.log(`Main processing completed in ${(Date.now() - processingStartTime)/1000}s`);
-
+    console.log(
+      `Main processing completed in ${
+        (Date.now() - processingStartTime) / 1000
+      }s`,
+    );
+    updateProgress('AI Processing Agent: Initial CV structure complete', 60);
     const result = JSON.parse(completion.choices[0].message.content || '{}');
 
-    // Enhancement if needed
-    if (strategyResult.contentQuality !== 'high' || strategyResult.potentialChallenges.length > 0) {
-      console.log('Starting enhancement...');
+    // Enhancement Phase (if needed)
+    if (
+      strategyResult.contentQuality !== 'high' ||
+      strategyResult.potentialChallenges.length > 0
+    ) {
+      updateProgress(
+        'AI Enhancement Agent: Starting CV optimization process...',
+        70,
+      );
+      updateProgress(
+        `AI Enhancement Agent: Addressing identified challenges: ${strategyResult.potentialChallenges.join(
+          ', ',
+        )}`,
+        75,
+      );
       const enhancementStartTime = Date.now();
+
+      updateProgress(
+        'AI Enhancement Agent: Reorganizing skills into logical categories...',
+        80,
+      );
+      updateProgress(
+        'AI Enhancement Agent: Optimizing content structure and clarity...',
+        85,
+      );
       const enhancement = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: 'gpt-4o-mini',
         messages: [
           {
-            role: "system",
+            role: 'system',
             content: `You are a CV enhancement specialist. Your task is to improve the organization and presentation of the CV while maintaining factual accuracy.
 
             STRICT RULES:
@@ -169,35 +241,43 @@ export async function processCVWithAI(cvText: string): Promise<ProcessedCV> {
             "Tools & Systems: skill1, skill2"
             "Process & Methods: skill1, skill2"
             
-            The categories should emerge from the skills present in the CV, not from a predefined list.`
+            The categories should emerge from the skills present in the CV, not from a predefined list.`,
           },
           {
-            role: "user",
+            role: 'user',
             content: `Enhance this CV by organizing the skills into natural groupings while maintaining all other sections as they are.
             
             Current CV:
             ${JSON.stringify(result)}
             
-            Return an improved version in the same JSON format, with skills grouped but not fabricated.`
-          }
+            Return an improved version in the same JSON format, with skills grouped but not fabricated.`,
+          },
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: 'json_object' },
       });
-      console.log(`Enhancement completed in ${(Date.now() - enhancementStartTime)/1000}s`);
+      console.log(
+        `Enhancement completed in ${
+          (Date.now() - enhancementStartTime) / 1000
+        }s`,
+      );
+      updateProgress('AI Enhancement Agent: Finalizing improvements...', 90);
+      const enhancedResult = JSON.parse(
+        enhancement.choices[0].message.content || '{}',
+      );
 
-      const enhancedResult = JSON.parse(enhancement.choices[0].message.content || '{}');
-      console.log(`Total processing time: ${(Date.now() - startTime)/1000}s`);
-      console.log('enhancedResult',JSON.stringify(enhancedResult));
+      updateProgress(
+        'AI Enhancement Agent: Optimization complete - Preparing final output...',
+        95,
+      );
+      console.log(`Total processing time: ${(Date.now() - startTime) / 1000}s`);
       return enhancedResult;
     }
 
-    console.log(`Total processing time: ${(Date.now() - startTime)/1000}s`);
-    console.log('result',JSON.stringify(result));
+    updateProgress('AI Processing Complete: Preparing final CV output...', 95);
+    console.log(`Total processing time: ${(Date.now() - startTime) / 1000}s`);
     return result;
-
   } catch (error) {
-    console.error('Error processing CV:', error);
-    console.log(`Failed after ${(Date.now() - startTime)/1000}s`);
-    throw new Error('Failed to process CV');
+    console.error('Error in AI processing:', error);
+    throw new Error('AI processing failed: Unable to complete CV analysis');
   }
 }

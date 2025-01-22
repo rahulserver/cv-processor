@@ -1,33 +1,35 @@
-import React from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Heading from '@tiptap/extension-heading'
-import BulletList from '@tiptap/extension-bullet-list'
-import TextAlign from '@tiptap/extension-text-align'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import React, { useEffect } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Heading from '@tiptap/extension-heading';
+import BulletList from '@tiptap/extension-bullet-list';
+import TextAlign from '@tiptap/extension-text-align';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import ListItem from '@tiptap/extension-list-item';
-import { 
-  Bold, 
-  Italic, 
-  List, 
-  AlignLeft, 
-  AlignCenter, 
+import {
+  Bold,
+  Italic,
+  List,
+  AlignLeft,
+  AlignCenter,
   AlignRight,
   Heading1,
-  Heading2
-} from 'lucide-react'
-import { ParsedCV } from '@/lib/pdf/types'
-import { toast } from "sonner"
+  Heading2,
+} from 'lucide-react';
+import { ParsedCV } from '@/lib/pdf/types';
+import { toast } from 'sonner';
+import { Extension, Node } from '@tiptap/core';
 
 interface CVEditorProps {
   initialCV: ParsedCV;
   onSave: (updatedCV: ParsedCV) => void;
+  onCancel: () => void;
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
   if (!editor) {
-    return null
+    return null;
   }
 
   return (
@@ -97,63 +99,144 @@ const MenuBar = ({ editor }: { editor: any }) => {
         <AlignRight className="h-4 w-4" />
       </Button>
     </div>
-  )
-}
+  );
+};
 
-export function CVEditor({ initialCV, onSave }: CVEditorProps) {
+// Create a custom node for fixed section headers
+const FixedSection = Node.create({
+  name: 'fixedSection',
+  group: 'block',
+  content: 'inline*',
+  selectable: false,
+  draggable: false,
+  clickable: false,
+  atom: true, // Makes the node a single unit
+  parseHTML() {
+    return [
+      {
+        tag: 'h2[data-type="fixed-section"]',
+      },
+    ];
+  },
+  renderHTML({ node }) {
+    return ['h2', { 'data-type': 'fixed-section', class: 'fixed-section' }, 0];
+  },
+  addAttributes() {
+    return {
+      'data-type': {
+        default: 'fixed-section',
+      },
+    };
+  },
+  addNodeView() {
+    return ({ node, getPos }) => {
+      const dom = document.createElement('h2');
+      dom.setAttribute('data-type', 'fixed-section');
+      dom.classList.add('fixed-section');
+      dom.setAttribute('contenteditable', 'false');
+      dom.textContent = node.textContent;
+      return {
+        dom,
+        update: (node) => {
+          dom.textContent = node.textContent;
+          return true;
+        },
+      };
+    };
+  },
+});
+
+export function CVEditor({ initialCV, onSave, onCancel }: CVEditorProps) {
+  const FIXED_SECTIONS = [
+    'Summary',
+    'Skills',
+    'Experience',
+    'Education',
+    'Recruiter Details',
+  ];
+
   const getInitialContent = () => {
     return `
       <h2>${initialCV.firstName || 'First Name'}</h2>
       <hr />
 
-      <h2>${initialCV.sectionTitles?.summary || 'Summary'}</h2>
+      <h2 data-type="fixed-section" class="fixed-section">Summary</h2>
       <p>${initialCV.objective || ''}</p>
       
-      ${initialCV.skills && Object.keys(initialCV.skills).length > 0 ? `
-        <h2>${initialCV.sectionTitles?.skills || 'Skills'}</h2>
+      ${
+        initialCV.skills && Object.keys(initialCV.skills).length > 0
+          ? `
+        <h2 data-type="fixed-section" class="fixed-section">Skills</h2>
         <ul style="list-style-position: outside; padding-left: 1.5em;">
-          ${Object.entries(initialCV.skills).map(([category, skills]) => 
-            `<li><strong>${category}</strong>: ${skills}</li>`
-          ).join('')}
+          ${Object.entries(initialCV.skills)
+            .map(
+              ([category, skills]) =>
+                `<li><strong>${category}</strong>: ${skills}</li>`,
+            )
+            .join('')}
         </ul>
-      ` : ''}
+      `
+          : ''
+      }
       
-      ${initialCV.experience && initialCV.experience.length > 0 ? `
-        <h2>${initialCV.sectionTitles?.experience || 'Experience'}</h2>
-        ${initialCV.experience.map(exp => `
+      ${
+        initialCV.experience && initialCV.experience.length > 0
+          ? `
+        <h2 data-type="fixed-section" class="fixed-section">Experience</h2>
+        ${initialCV.experience
+          .map(
+            (exp) => `
           <p><strong>${exp.position}</strong></p>
           <p>${exp.company} | ${exp.period}</p>
-          ${exp.responsibilities && exp.responsibilities.length > 0 ? `
+          ${
+            exp.responsibilities && exp.responsibilities.length > 0
+              ? `
             <ul style="list-style-position: outside; padding-left: 1.5em;">
-              ${exp.responsibilities.map(resp => `<li>${resp}</li>`).join('')}
+              ${exp.responsibilities.map((resp) => `<li>${resp}</li>`).join('')}
             </ul>
-          ` : ''}
-        `).join('')}
-      ` : ''}
+          `
+              : ''
+          }
+        `,
+          )
+          .join('')}
+      `
+          : ''
+      }
       
-      ${initialCV.education && initialCV.education.length > 0 ? `
-        <h2>${initialCV.sectionTitles?.education || 'Education'}</h2>
-        ${initialCV.education.map(edu => `
+      ${
+        initialCV.education && initialCV.education.length > 0
+          ? `
+        <h2 data-type="fixed-section" class="fixed-section">Education</h2>
+        ${initialCV.education
+          .map(
+            (edu) => `
           <p><strong>${edu.qualification}</strong></p>
           <p>${edu.institution} - ${edu.completionDate}</p>
-        `).join('')}
-      ` : ''}
+        `,
+          )
+          .join('')}
+      `
+          : ''
+      }
 
       <hr />
-      <h2>${initialCV.sectionTitles?.recruiterDetails || 'Recruiter Details'}</h2>
+      <h2 data-type="fixed-section" class="fixed-section">Recruiter Details</h2>
       <p>${initialCV.recruiterDetails || ''}</p>
-    `
-  }
+    `;
+  };
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
+        heading: false, // Disable default heading
         bulletList: {
           HTMLAttributes: {
-            style: 'list-style-position: outside; padding-left: 1.5em;'
-          }
-        }
+            style: 'list-style-position: outside; padding-left: 1.5em;',
+          },
+        },
       }),
+      FixedSection,
       Heading.configure({
         levels: [1, 2],
       }),
@@ -166,47 +249,78 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
       attributes: {
         class: 'prose prose-sm max-w-none focus:outline-none',
       },
+      handleDrop: () => true, // Prevent drag and drop
+      handleClick: (view, pos, event) => {
+        const node = view.state.doc.nodeAt(pos);
+        if (node?.type.name === 'fixedSection') {
+          return true; // Prevent click on fixed sections
+        }
+        return false;
+      },
+      handleKeyDown: (view, event) => {
+        const { selection } = view.state;
+        const node = view.state.doc.nodeAt(selection.$from.pos);
+        if (node?.type.name === 'fixedSection') {
+          return true; // Prevent keyboard input on fixed sections
+        }
+        return false;
+      },
     },
   });
-  
+
+  // Add styles for fixed sections
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .fixed-section {
+        background-color: #f3f4f6;
+        padding: 8px 12px;
+        margin: 16px 0 8px 0;
+        border-radius: 4px;
+        pointer-events: none !important;
+        user-select: none !important;
+        position: relative;
+        opacity: 0.8;
+        cursor: not-allowed !important;
+      }
+      
+      .fixed-section::after {
+        content: "";
+        font-size: 0.75em;
+        color: #6b7280;
+        font-weight: normal;
+      }
+
+      [data-type="fixed-section"] {
+        cursor: not-allowed !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   const handleSave = () => {
     if (!editor) {
       toast.error('Editor not initialized');
       return;
     }
-    
+
     try {
       const content = editor.getHTML();
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, 'text/html');
-      
-      // Extract all section titles
-      const sectionTitles = Array.from(doc.querySelectorAll('h2')).reduce((acc, h2) => {
-        const title = h2.textContent?.trim() || '';
-        if (title === initialCV.firstName) return acc; // Skip the name header
-        
-        // Determine which section this title belongs to
-        if (title.toLowerCase().includes('summary')) acc.summary = title;
-        else if (title.toLowerCase().includes('skill')) acc.skills = title;
-        else if (title.toLowerCase().includes('experience')) acc.experience = title;
-        else if (title.toLowerCase().includes('education')) acc.education = title;
-        else if (title.toLowerCase().includes('recruiter')) acc.recruiterDetails = title;
-        
-        return acc;
-      }, {} as Record<string, string>);
-      
-      // Parse the HTML content back into CV structure
+
+      // Extract content while preserving fixed section titles
       const updatedCV: ParsedCV = {
         ...initialCV,
-        firstName: extractFirstName(content) || initialCV.firstName || '',
-        objective: extractContent(content, 'Summary') || initialCV.objective || '',
-        skills: extractSkills(content) || initialCV.skills || {},
-        experience: extractExperience(content) || initialCV.experience || [],
-        education: extractEducation(content) || initialCV.education || [],
-        recruiterDetails: extractContent(content, 'Recruiter Details') || initialCV.recruiterDetails || '',
-        sectionTitles, // Add the modified section titles
-        formattingNotes: initialCV.formattingNotes || [],
-        piiRemoved: initialCV.piiRemoved || []
+        firstName: extractFirstName(content),
+        objective: extractContent(content, 'Summary'),
+        skills: extractSkills(content),
+        experience: extractExperience(content),
+        education: extractEducation(content),
+        recruiterDetails: extractContent(content, 'Recruiter Details'),
       };
 
       // Validate required fields
@@ -215,124 +329,83 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
         return;
       }
 
-      // Validate experience entries if they exist
-      if (updatedCV.experience.length > 0) {
-        for (const exp of updatedCV.experience) {
-          if (!exp.company?.trim() || !exp.position?.trim() || !exp.period?.trim()) {
-            toast.error('All experience entries must have company, position, and period');
-            return;
-          }
-        }
-      }
-
-      // Log the extracted content for debugging
-      console.log('Extracted CV:', {
-        firstName: updatedCV.firstName,
-        objective: updatedCV.objective,
-        skills: updatedCV.skills,
-        experience: updatedCV.experience,
-        education: updatedCV.education,
-        recruiterDetails: updatedCV.recruiterDetails
-      });
-
       onSave(updatedCV);
       toast.success('CV updated successfully');
     } catch (error) {
       console.error('Error saving CV:', error);
       toast.error('Failed to save CV changes');
     }
-  }
+  };
 
   const extractFirstName = (html: string): string => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const firstH2 = doc.querySelector('h2');
+    return firstH2?.textContent?.trim() || initialCV.firstName || '';
+  };
+
+  const extractContent = (html: string, sectionTitle: string): string => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      const firstH2 = doc.querySelector('h2');
-      return firstH2?.textContent?.trim() || '';
-    } catch (error) {
-      console.error('Error extracting name:', error);
-      return '';
-    }
-  };
-
-  const extractContent = (html: string, defaultTitle: string): string => {
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      
-      // Get all h2 elements and their content
-      const sections = Array.from(doc.querySelectorAll('h2')).map(h2 => 
-        findSectionContent(doc, h2)
+      const section = Array.from(doc.querySelectorAll('h2')).find(
+        (h2) => h2.textContent?.trim() === sectionTitle,
       );
-      
-      // Find the section that most closely matches the default title
-      // This allows for modified titles to still be matched with their content
-      const section = sections.find(s => 
-        s.title.toLowerCase().includes(defaultTitle.toLowerCase()) ||
-        defaultTitle.toLowerCase().includes(s.title.toLowerCase())
-      );
-      
-      return section?.content || '';
-    } catch (error) {
-      console.error(`Error extracting ${defaultTitle}:`, error);
-      return '';
-    }
-  };
+      const nextElement = section?.nextElementSibling;
+      if (!section || !nextElement) return '';
 
-  const findSectionContent = (doc: Document, startingH2: Element): { title: string, content: string } => {
-    const title = startingH2.textContent?.trim() || '';
-    let content = '';
-    let currentElement = startingH2.nextElementSibling;
-    
-    while (currentElement && currentElement.tagName !== 'H2' && currentElement.tagName !== 'HR') {
-      if (currentElement.textContent) {
-        const text = currentElement.textContent.trim();
-        if (text) {
-          content += (content ? '\n' : '') + text;
+      let content = '';
+      let currentElement: Element | null = nextElement;
+
+      while (currentElement && currentElement.tagName !== 'H2') {
+        if (currentElement.textContent) {
+          content += (content ? '\n' : '') + currentElement.textContent.trim();
         }
+        currentElement = currentElement.nextElementSibling;
       }
-      currentElement = currentElement.nextElementSibling;
+
+      return content;
+    } catch (error) {
+      console.error(`Error extracting ${sectionTitle}:`, error);
+      return '';
     }
-    
-    return { title, content };
   };
 
   const extractSkills = (html: string): { [key: string]: string } => {
-    try {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const skillsSection = Array.from(doc.querySelectorAll('h2')).find(h2 => 
-        h2.textContent?.trim() === 'Skills'
-      );
-      if (!skillsSection) return {};
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const skillsSection = Array.from(doc.querySelectorAll('h2')).find(
+      (h2) => h2.textContent?.trim() === 'Skills',
+    );
+    if (!skillsSection) return {};
 
-      const skillsList = skillsSection.nextElementSibling;
-      if (!skillsList || skillsList.tagName !== 'UL') return {};
+    const skillsList = skillsSection.nextElementSibling;
+    if (!skillsList || skillsList.tagName !== 'UL') return {};
 
-      const skills: { [key: string]: string } = {};
-      Array.from(skillsList.querySelectorAll('li')).forEach(li => {
-        const strongTag = li.querySelector('strong');
-        if (strongTag) {
-          const category = strongTag.textContent?.replace(':', '').trim() || '';
-          const skillsText = li.textContent?.replace(strongTag.textContent || '', '').replace(':', '').trim() || '';
-          if (category && skillsText) {
-            skills[category] = skillsText;
-          }
+    const skills: { [key: string]: string } = {};
+    Array.from(skillsList.querySelectorAll('li')).forEach((li) => {
+      const strongTag = li.querySelector('strong');
+      if (strongTag) {
+        const category = strongTag.textContent?.replace(':', '').trim() || '';
+        const skillsText =
+          li.textContent
+            ?.replace(strongTag.textContent || '', '')
+            .replace(':', '')
+            .trim() || '';
+        if (category && skillsText) {
+          skills[category] = skillsText;
         }
-      });
+      }
+    });
 
-      return skills;
-    } catch (error) {
-      console.error('Error extracting skills:', error);
-      return {};
-    }
+    return skills;
   };
 
   const extractExperience = (html: string): ParsedCV['experience'] => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const experienceSection = Array.from(doc.querySelectorAll('h2')).find(h2 => 
-      h2.textContent?.trim() === 'Experience'
+    const experienceSection = Array.from(doc.querySelectorAll('h2')).find(
+      (h2) => h2.textContent?.trim() === 'Experience',
     );
     if (!experienceSection) return [];
 
@@ -349,16 +422,17 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
             experiences.push(currentExperience as ParsedCV['experience'][0]);
             currentExperience = {};
           }
-          currentExperience.position = text.replace(/\s*\|\s*.*$/, '');
+          currentExperience.position = text;
         } else if (text.includes('|')) {
           // This is company and period
-          const [company, period] = text.split('|').map(s => s.trim());
+          const [company, period] = text.split('|').map((s) => s.trim());
           currentExperience.company = company;
           currentExperience.period = period;
         }
       } else if (currentElement.tagName === 'UL') {
-        currentExperience.responsibilities = Array.from(currentElement.querySelectorAll('li'))
-          .map(li => li.textContent?.trim() || '');
+        currentExperience.responsibilities = Array.from(
+          currentElement.querySelectorAll('li'),
+        ).map((li) => li.textContent?.trim() || '');
       }
       currentElement = currentElement.nextElementSibling;
     }
@@ -368,13 +442,13 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
     }
 
     return experiences;
-  }
+  };
 
   const extractEducation = (html: string): ParsedCV['education'] => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
-    const educationSection = Array.from(doc.querySelectorAll('h2')).find(h2 => 
-      h2.textContent?.trim() === 'Education'
+    const educationSection = Array.from(doc.querySelectorAll('h2')).find(
+      (h2) => h2.textContent?.trim() === 'Education',
     );
     if (!educationSection) return [];
 
@@ -392,7 +466,9 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
           }
           currentEducation.qualification = text;
         } else if (text.includes('-')) {
-          const [institution, completionDate] = text.split('-').map(s => s.trim());
+          const [institution, completionDate] = text
+            .split('-')
+            .map((s) => s.trim());
           currentEducation.institution = institution;
           currentEducation.completionDate = completionDate;
         }
@@ -405,7 +481,7 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
     }
 
     return education;
-  }
+  };
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
@@ -419,12 +495,13 @@ export function CVEditor({ initialCV, onSave }: CVEditorProps) {
             <EditorContent editor={editor} />
           </div>
         </div>
-        <div className="mt-4 flex justify-end">
-          <Button onClick={handleSave}>
-            Save Changes
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
           </Button>
+          <Button onClick={handleSave}>Save Changes</Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
