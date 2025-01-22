@@ -18,8 +18,137 @@ interface ProcessedCV {
   formattingNotes: string[];
   piiRemoved?: string[];
 }
+
 interface ProgressCallback {
   (message: string, percentage: number): void;
+}
+
+// Strategy Analysis Agent - Exact same logic, just organized into a function
+async function runStrategyAgent(openai: OpenAI, cvText: string) {
+  return await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: `You are an intelligent CV analyzer. Evaluate the CV and determine the optimal processing strategy.
+          Return a JSON object describing what aspects need focus and in what order.`,
+      },
+      {
+        role: 'user',
+        content: `Analyze this CV and return a JSON object containing:
+          {
+            "contentQuality": "high|medium|low",
+            "primaryFocus": ["List of areas needing most attention"],
+            "processingPriorities": ["Ordered list of processing steps needed"],
+            "potentialChallenges": ["Anticipated processing challenges"]
+          }
+
+          CV Content:
+          ${cvText}`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  });
+}
+
+// Main Processing Agent - Exact same logic, just organized into a function
+async function runProcessingAgent(openai: OpenAI, cvText: string) {
+  return await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: `You are an intelligent CV processing agent. Your primary task is to ONLY process and format existing information, never invent new details.
+
+          STRICT RULES:
+          1. NEVER add education unless explicitly stated in the CV
+          2. NEVER create certifications unless explicitly listed
+          3. NEVER add references
+          4. NEVER add percentages or specific metrics unless they appear in the source
+          5. NEVER embellish or enhance responsibilities with metrics
+          6. Track ALL removed PII in piiRemoved array, including:
+             - Last names
+             - Full names of references
+             - Phone numbers
+             - Email addresses
+             - Physical addresses
+             - Any other identifying information except first name
+
+          SKILLS FORMATTING:
+          1. Group similar skills under appropriate categories
+          2. Return skills as an object where:
+             - Keys are category names (derived from the skills present)
+             - Values are comma-separated strings of related skills
+          3. DO NOT create categories that don't match the skills present
+          4. DO NOT invent or add skills not present in the source
+
+          Return the processed CV in this exact format:
+          {
+            "firstName": "string",
+            "objective": "string",
+            "skills": {
+              "category1": "comma separated skills",
+              "category2": "comma separated skills"
+            },
+            "experience": [{
+              "company": "string",
+              "position": "string",
+              "period": "string",
+              "responsibilities": ["string"]
+            }],
+            "education": [{
+              "institution": "string",
+              "qualification": "string",
+              "completionDate": "string"
+            }],
+            "formattingNotes": ["string"],
+            "piiRemoved": ["string"]
+          }`,
+      },
+      {
+        role: 'user',
+        content: `Process this CV and return a JSON object following the specified format:
+
+          CV Content:
+          ${cvText}`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  });
+}
+
+// Enhancement Agent - Exact same logic, just organized into a function
+async function runEnhancementAgent(openai: OpenAI, result: any) {
+  return await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: `You are a CV enhancement specialist. Your task is to improve the organization and presentation of the CV while maintaining factual accuracy.
+
+            STRICT RULES:
+            1. NEVER add information that isn't in the source CV
+            2. NEVER create metrics or percentages that aren't in the source
+            3. NEVER fabricate any details
+            
+            SKILLS ORGANIZATION:
+            1. Analyze the skills list and identify 4-6 natural groupings based on the actual skills present
+            2. Create appropriate category names based on the skills' nature
+            3. Group related skills together under each category
+            4. Format each category as "Category: skill1, skill2, etc."`,
+      },
+      {
+        role: 'user',
+        content: `Enhance this CV by organizing the skills into natural groupings while maintaining all other sections as they are.
+            
+            Current CV:
+            ${JSON.stringify(result)}
+            
+            Return an improved version in the same JSON format, with skills grouped but not fabricated.`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  });
 }
 
 export async function processCVWithAI(
@@ -53,30 +182,7 @@ export async function processCVWithAI(
       20,
     );
     const strategyStartTime = Date.now();
-    const strategy = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an intelligent CV analyzer. Evaluate the CV and determine the optimal processing strategy.
-          Return a JSON object describing what aspects need focus and in what order.`,
-        },
-        {
-          role: 'user',
-          content: `Analyze this CV and return a JSON object containing:
-          {
-            "contentQuality": "high|medium|low",
-            "primaryFocus": ["List of areas needing most attention"],
-            "processingPriorities": ["Ordered list of processing steps needed"],
-            "potentialChallenges": ["Anticipated processing challenges"]
-          }
-
-          CV Content:
-          ${cvText}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-    });
+    const strategy = await runStrategyAgent(openai, cvText);
     console.log(
       `Strategy analysis completed in ${
         (Date.now() - strategyStartTime) / 1000
@@ -117,74 +223,7 @@ export async function processCVWithAI(
       50,
     );
     const processingStartTime = Date.now();
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an intelligent CV processing agent. Your primary task is to ONLY process and format existing information, never invent new details.
-
-          STRICT RULES:
-          1. NEVER add education unless explicitly stated in the CV
-          2. NEVER create certifications unless explicitly listed
-          3. NEVER add references
-          4. NEVER add percentages or specific metrics unless they appear in the source
-          5. NEVER embellish or enhance responsibilities with metrics
-          6. Track ALL removed PII in piiRemoved array, including:
-             - Last names
-             - Full names of references
-             - Phone numbers
-             - Email addresses
-             - Physical addresses
-             - Any other identifying information except first name
-
-          SKILLS FORMATTING:
-          1. Group similar skills under appropriate categories
-          2. Return skills as an object where:
-             - Keys are category names (derived from the skills present)
-             - Values are comma-separated strings of related skills
-          3. DO NOT create categories that don't match the skills present
-          4. DO NOT invent or add skills not present in the source
-
-          Example skills format (DO NOT USE THESE EXACT CATEGORIES, CREATE RELEVANT ONES FROM THE CV):
-          {
-            "Category Name": "skill1, skill2, skill3",
-            "Another Category": "skill4, skill5, skill6"
-          }
-
-          Return the processed CV in this exact format:
-          {
-            "firstName": "string",
-            "objective": "string",
-            "skills": {
-              "category1": "comma separated skills",
-              "category2": "comma separated skills"
-            },
-            "experience": [{
-              "company": "string",
-              "position": "string",
-              "period": "string",
-              "responsibilities": ["string"]
-            }],
-            "education": [{
-              "institution": "string",
-              "qualification": "string",
-              "completionDate": "string"
-            }],
-            "formattingNotes": ["string"],
-            "piiRemoved": ["string"]
-          }`,
-        },
-        {
-          role: 'user',
-          content: `Process this CV and return a JSON object following the specified format:
-
-          CV Content:
-          ${cvText}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-    });
+    const completion = await runProcessingAgent(openai, cvText);
     console.log(
       `Main processing completed in ${
         (Date.now() - processingStartTime) / 1000
@@ -208,7 +247,6 @@ export async function processCVWithAI(
         )}`,
         75,
       );
-      const enhancementStartTime = Date.now();
 
       updateProgress(
         'AI Enhancement Agent: Reorganizing skills into logical categories...',
@@ -218,43 +256,8 @@ export async function processCVWithAI(
         'AI Enhancement Agent: Optimizing content structure and clarity...',
         85,
       );
-      const enhancement = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a CV enhancement specialist. Your task is to improve the organization and presentation of the CV while maintaining factual accuracy.
-
-            STRICT RULES:
-            1. NEVER add information that isn't in the source CV
-            2. NEVER create metrics or percentages that aren't in the source
-            3. NEVER fabricate any details
-            
-            SKILLS ORGANIZATION:
-            1. Analyze the skills list and identify 4-6 natural groupings based on the actual skills present
-            2. Create appropriate category names based on the skills' nature
-            3. Group related skills together under each category
-            4. Format each category as "Category: skill1, skill2, etc."
-            
-            Example format (DO NOT USE THESE EXACT CATEGORIES, CREATE RELEVANT ONES BASED ON THE CV):
-            "Core Technical Skills: skill1, skill2, skill3"
-            "Tools & Systems: skill1, skill2"
-            "Process & Methods: skill1, skill2"
-            
-            The categories should emerge from the skills present in the CV, not from a predefined list.`,
-          },
-          {
-            role: 'user',
-            content: `Enhance this CV by organizing the skills into natural groupings while maintaining all other sections as they are.
-            
-            Current CV:
-            ${JSON.stringify(result)}
-            
-            Return an improved version in the same JSON format, with skills grouped but not fabricated.`,
-          },
-        ],
-        response_format: { type: 'json_object' },
-      });
+      const enhancementStartTime = Date.now();
+      const enhancement = await runEnhancementAgent(openai, result);
       console.log(
         `Enhancement completed in ${
           (Date.now() - enhancementStartTime) / 1000
