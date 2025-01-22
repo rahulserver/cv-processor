@@ -69,7 +69,7 @@ export function UploadCV({ onProcessed }: UploadCVProps) {
         formData.append('cv', file!);
       }
 
-      const response = await fetch('/api/process-cv', {
+      const response = await fetch('http://localhost:3001/api/cv/process', {
         method: 'POST',
         body: formData,
       });

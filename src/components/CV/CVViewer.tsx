@@ -5,18 +5,18 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 import { ParsedCV } from '@/lib/pdf/types';
 import { Download } from 'lucide-react';
 
@@ -30,7 +30,7 @@ interface CVViewerProps {
 export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
   const handleDownload = async () => {
     try {
-      const response = await fetch('/api/generate-pdf', {
+      const response = await fetch('http://localhost:3001/api/pdf/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
 
       // Get the PDF blob
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -71,9 +71,7 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
               <Button variant="outline" onClick={onClose}>
                 Close
               </Button>
-              <Button onClick={() => onEdit(data)}>
-                Edit CV
-              </Button>
+              <Button onClick={() => onEdit(data)}>Edit CV</Button>
             </div>
           </AlertDialogTitle>
           <AlertDialogDescription>
@@ -114,14 +112,17 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
                       {data.experience.map((exp, index) => (
                         <div key={index}>
                           <p className="font-semibold">{exp.position}</p>
-                          <p className="text-gray-600">{exp.company} | {exp.period}</p>
-                          {exp.responsibilities && exp.responsibilities.length > 0 && (
-                            <ul className="list-disc pl-6 mt-2">
-                              {exp.responsibilities.map((resp, respIndex) => (
-                                <li key={respIndex}>{resp}</li>
-                              ))}
-                            </ul>
-                          )}
+                          <p className="text-gray-600">
+                            {exp.company} | {exp.period}
+                          </p>
+                          {exp.responsibilities &&
+                            exp.responsibilities.length > 0 && (
+                              <ul className="list-disc pl-6 mt-2">
+                                {exp.responsibilities.map((resp, respIndex) => (
+                                  <li key={respIndex}>{resp}</li>
+                                ))}
+                              </ul>
+                            )}
                         </div>
                       ))}
                     </div>
@@ -135,7 +136,9 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
                       {data.education.map((edu, index) => (
                         <div key={index}>
                           <p className="font-semibold">{edu.qualification}</p>
-                          <p className="text-gray-600">{edu.institution} - {edu.completionDate}</p>
+                          <p className="text-gray-600">
+                            {edu.institution} - {edu.completionDate}
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -144,8 +147,12 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
 
                 {data?.recruiterDetails && (
                   <div>
-                    <h2 className="text-xl font-semibold mb-2">Recruiter Details</h2>
-                    <p className="text-gray-700 whitespace-pre-wrap">{data.recruiterDetails}</p>
+                    <h2 className="text-xl font-semibold mb-2">
+                      Recruiter Details
+                    </h2>
+                    <p className="text-gray-700 whitespace-pre-wrap">
+                      {data.recruiterDetails}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -160,7 +167,9 @@ export function CVViewer({ data, isOpen, onClose, onEdit }: CVViewerProps) {
                 <CardContent>
                   <ul className="list-disc list-inside space-y-1">
                     {data.formattingNotes.map((note, index) => (
-                      <li key={index} className="text-sm text-muted-foreground">{note}</li>
+                      <li key={index} className="text-sm text-muted-foreground">
+                        {note}
+                      </li>
                     ))}
                   </ul>
                 </CardContent>
