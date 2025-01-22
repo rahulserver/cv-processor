@@ -3,7 +3,7 @@ import { TransformStream } from 'stream/web';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { extractTextFromPDF, parseCV } from '@/lib/pdf/parser';
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new TransformStream();
