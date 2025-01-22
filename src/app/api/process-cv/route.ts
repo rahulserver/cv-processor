@@ -3,7 +3,7 @@ import { TransformStream } from 'stream/web';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { extractTextFromPDF, parseCV } from '@/lib/pdf/parser';
-
+export const runtime = 'edge';
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new TransformStream();
@@ -35,7 +35,11 @@ export async function POST(req: NextRequest) {
         const useSample = formData.get('useSample');
         if (useSample) {
           await sendProgress('Loading sample CV...', 20);
-          const samplePath = path.join(process.cwd(), 'public/resources', 'sample-cv.pdf');
+          const samplePath = path.join(
+            process.cwd(),
+            'public/resources',
+            'sample-cv.pdf',
+          );
           const buffer = await fs.readFile(samplePath);
           text = await extractTextFromPDF(buffer);
         } else {
