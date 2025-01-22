@@ -85,3 +85,8 @@ export async function POST(req: NextRequest) {
     return new Response('Internal Server Error', { status: 500 });
   }
 }
+
+// add a dummy GET request here to test the route
+export async function GET(req: NextRequest) {
+  return new Response('Hello World');
+}
